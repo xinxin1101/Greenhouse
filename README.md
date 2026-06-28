@@ -27,6 +27,7 @@ point_cloud(id, record_time, file_name)
 
 - [Technical Manual](docs/technical-manual.md)
 - [API Draft](docs/api.md)
+- [GitHub Pull & Run Guide](docs/setup-from-github.md)
 
 ## One-Click Local Run
 
