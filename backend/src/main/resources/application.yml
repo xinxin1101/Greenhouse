@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+app:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/sensor?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: "269756"
+  point-cloud:
+    directory: E:/study/new_sensor/pointCloud
+  cors:
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173

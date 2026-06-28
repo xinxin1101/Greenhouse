@@ -1,0 +1,38 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Logs and runtime output
+logs/
+*.log
+.runtime/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.turbo/
+frontend/coverage/
+frontend/*.tsbuildinfo
+
+# Java/Maven build output
+backend/target/
+JavaSDKV2.2.2/**/target/
+JavaSDKV2.2.2/**/bin/
+
+# Eclipse/IDE generated project files
+JavaSDKV2.2.2/**/.classpath
+JavaSDKV2.2.2/**/.project
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
