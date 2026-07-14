@@ -49,14 +49,15 @@ function Stop-PortListener($Port) {
 }
 
 Write-Step "Stopping services from pid files..."
+Stop-PidFile "greenhouse-hmi"
 Stop-PidFile "collector"
 Stop-PidFile "frontend"
 Stop-PidFile "backend"
 
 Write-Step "Checking known ports..."
+Stop-PortListener 8000
 Stop-PortListener 2404
 Stop-PortListener 5173
 Stop-PortListener 8080
 
 Write-Step "Stop finished."
-

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>参数与设备控制 · 环境参数监控与控制平台 · v1.7</title>
+  <link rel="stylesheet" href="/static/styles.css?v=1.6.0">
+</head>
+<body data-page="control">
+  <div class="app-shell">
+
+<header class="app-header">
+  <div class="header-main">
+    <div class="brand-block">
+      <div class="brand-mark">HMI</div>
+      <div>
+        <div class="eyebrow">S7-200 SMART · WEB HMI</div>
+        <h1>环境参数监控与控制平台</h1>
+        <p>实时监测、设备控制与检测数据归档</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="version-badge">v1.7</span>
+      <div class="connection-panel">
+        <span id="connectionDot" class="status-dot offline"></span>
+        <div class="connection-copy">
+          <strong id="connectionText">正在连接 PLC</strong>
+          <span id="connectionDetail">192.168.2.1:102</span>
+          <span id="lastUpdate">尚未收到数据</span>
+        </div>
+        <span id="modeBadge" class="mode-badge">PLC 模式</span>
+      </div>
+    </div>
+  </div>
+  <nav class="top-nav" aria-label="主栏目">
+    <a class="nav-link" href="/overview"><span class="nav-icon">◉</span><span>实时总览</span></a><a class="nav-link active" href="/control"><span class="nav-icon">⚙</span><span>参数与设备控制</span></a><a class="nav-link" href="/history"><span class="nav-icon">▤</span><span>历史数据</span></a>
+  </nav>
+
+</header>
+<div id="connectionBanner" class="connection-banner hidden"></div>
+
+    <main class="main-content">
+      <section class="page-intro">
+  <div>
+    <span class="section-kicker">CONTROL CENTER</span>
+    <h2>参数与设备控制</h2>
+    <p>设置目标值、执行变化曲线并控制设备。PLC 保护和联锁逻辑始终优先。</p>
+  </div>
+</section>
+
+<div class="two-column">
+  <section class="panel">
+    <div class="panel-heading compact">
+      <div><span class="section-kicker">SETPOINT</span><h3>目标值调节</h3></div>
+    </div>
+    <form id="targetForm" class="target-form">
+      <label>
+        <span>温度目标</span>
+        <div class="input-with-unit">
+          <input id="targetTemperature" type="number" step="0.1" min="-20" max="60" required>
+          <em>℃</em>
+        </div>
+        <small id="feedbackTemperature">PLC 设定反馈：--</small>
+      </label>
+      <label>
+        <span>湿度目标</span>
+        <div class="input-with-unit">
+          <input id="targetHumidity" type="number" step="0.1" min="0" max="100" required>
+          <em>%RH</em>
+        </div>
+        <small id="feedbackHumidity">PLC 设定反馈：--</small>
+      </label>
+      <label>
+        <span>CO₂ 目标</span>
+        <div class="input-with-unit">
+          <input id="targetCo2" type="number" step="1" min="0" max="10000" required>
+          <em>ppm</em>
+        </div>
+        <small id="feedbackCo2">PLC 设定反馈：--</small>
+      </label>
+      <label>
+        <span>灯组目标</span>
+        <select id="targetLight">
+          <option value="true">开启</option>
+          <option value="false">关闭</option>
+        </select>
+        <small>写入 M14.0，实际状态读取 Q1.1</small>
+      </label>
+      <button class="button primary full" type="submit">写入目标值</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading compact">
+      <div><span class="section-kicker">PROFILE CONTROL</span><h3>变化曲线控制</h3></div>
+    </div>
+    <form id="curveForm" class="curve-form">
+      <label>
+        <span>控制参数</span>
+        <select id="curveSensor">
+          <option value="temperature">温度</option>
+          <option value="humidity">湿度</option>
+          <option value="co2">CO₂</option>
+        </select>
+      </label>
+      <div class="form-row">
+        <label><span>起始值</span><input id="curveStart" type="number" step="0.1" required></label>
+        <label><span>结束值</span><input id="curveEnd" type="number" step="0.1" required></label>
+      </div>
+      <div class="form-row">
+        <label>
+          <span>持续时间</span>
+          <div class="input-with-unit">
+            <input id="curveDuration" type="number" min="5" max="86400" value="60" required>
+            <em>秒</em>
+          </div>
+        </label>
+        <label>
+          <span>PLC 写入周期</span>
+          <div class="input-with-unit">
+            <input id="curveInterval" type="number" min="1" max="3600" value="10" required>
+            <em>秒</em>
+          </div>
+        </label>
+      </div>
+      <label>
+        <span>曲线类型</span>
+        <select id="curveShape">
+          <option value="linear">线性变化</option>
+          <option value="smooth">平滑变化</option>
+          <option value="step">中点阶跃</option>
+        </select>
+      </label>
+      <button class="button primary full" type="submit">启动变化曲线</button>
+    </form>
+    <div id="activeCurves" class="active-curves empty">当前没有执行中的曲线</div>
+  </section>
+</div>
+
+<section class="panel curve-comparison-panel">
+  <div class="panel-heading">
+    <div>
+      <span class="section-kicker">PRESET VS ACTUAL</span>
+      <h3>预设曲线与实际曲线</h3>
+    </div>
+    <div class="curve-trace-tools">
+      <label>
+        对比参数
+        <select id="curveTraceSensor">
+          <option value="temperature">温度</option>
+          <option value="humidity">湿度</option>
+          <option value="co2">CO₂</option>
+        </select>
+      </label>
+      <button id="refreshCurveTraceBtn" class="button secondary" type="button">
+        刷新实际曲线
+      </button>
+    </div>
+  </div>
+  <div class="curve-legend">
+    <span><i class="legend-line preset"></i>预设曲线</span>
+    <span><i class="legend-line actual"></i>实际检测曲线</span>
+  </div>
+  <div id="curveTraceMessage" class="result-strip warning">
+    尚未设置该参数的预设曲线
+  </div>
+  <div class="curve-overlay-wrap">
+    <canvas id="curveTraceChart"></canvas>
+  </div>
+</section>
+
+<section class="panel control-panel">
+  <div class="panel-heading">
+    <div><span class="section-kicker">DEVICE CONTROL</span><h3>设备控制</h3></div>
+    <span class="safety-note">压机停机保护由 PLC 内部固定为 180 秒</span>
+  </div>
+  <div id="controlGrid" class="control-grid"></div>
+</section>
+    </main>
+    <footer>
+      <span>FastAPI + WebSocket + SQLite · S7-200 SMART ST30 · TCP 102</span>
+      <span id="footerClock"></span>
+    </footer>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/static/common.js?v=1.6.0"></script>
+  <script src="/static/charts.js?v=1.6.0"></script>
+  <script src="/static/control.js?v=1.6.0"></script>
+</body>
+</html>

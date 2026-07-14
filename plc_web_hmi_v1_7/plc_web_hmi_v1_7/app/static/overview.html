@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>实时总览 · 环境参数监控与控制平台 · v1.7</title>
+  <link rel="stylesheet" href="/static/styles.css?v=1.6.0">
+</head>
+<body data-page="overview">
+  <div class="app-shell">
+
+<header class="app-header">
+  <div class="header-main">
+    <div class="brand-block">
+      <div class="brand-mark">HMI</div>
+      <div>
+        <div class="eyebrow">S7-200 SMART · WEB HMI</div>
+        <h1>环境参数监控与控制平台</h1>
+        <p>实时监测、设备控制与检测数据归档</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="version-badge">v1.7</span>
+      <div class="connection-panel">
+        <span id="connectionDot" class="status-dot offline"></span>
+        <div class="connection-copy">
+          <strong id="connectionText">正在连接 PLC</strong>
+          <span id="connectionDetail">192.168.2.1:102</span>
+          <span id="lastUpdate">尚未收到数据</span>
+        </div>
+        <span id="modeBadge" class="mode-badge">PLC 模式</span>
+      </div>
+    </div>
+  </div>
+  <nav class="top-nav" aria-label="主栏目">
+    <a class="nav-link active" href="/overview"><span class="nav-icon">◉</span><span>实时总览</span></a><a class="nav-link" href="/control"><span class="nav-icon">⚙</span><span>参数与设备控制</span></a><a class="nav-link" href="/history"><span class="nav-icon">▤</span><span>历史数据</span></a>
+  </nav>
+
+  <nav class="overview-child-nav" aria-label="实时总览子栏目">
+    <a class="overview-child-link active" href="/overview">当前概况</a>
+    <a class="overview-child-link" href="/trends">查看曲线</a>
+  </nav>
+
+</header>
+<div id="connectionBanner" class="connection-banner hidden"></div>
+
+    <main class="main-content">
+      <section class="page-intro overview-intro">
+  <div>
+    <span class="section-kicker">LIVE DASHBOARD</span>
+    <h2>实时总览</h2>
+    <p>当前检测值、设备运行状态和异常信号汇总。</p>
+  </div>
+</section>
+
+<section id="sensorCards" class="sensor-grid overview-sensor-grid"></section>
+
+<div class="overview-bottom-grid">
+  <section class="panel overview-status-panel">
+    <div class="panel-heading compact">
+      <div>
+        <span class="section-kicker">RUN STATUS</span>
+        <h3>设备运行状态</h3>
+      </div>
+    </div>
+    <div id="overviewRunStatus" class="status-grid overview-status-grid"></div>
+  </section>
+
+  <section class="panel overview-alarm-panel">
+    <div class="panel-heading compact">
+      <div>
+        <span class="section-kicker danger">ALARM SUMMARY</span>
+        <h3>异常情况</h3>
+      </div>
+      <div class="overview-alarm-actions">
+        <button id="openAlarmLogBtn" class="button compact-button secondary" type="button">
+          异常日志
+        </button>
+        <span id="overviewAlarmCount" class="alarm-count-pill">0 项异常</span>
+      </div>
+    </div>
+    <div id="overviewAlarmSignals" class="alarm-signal-grid overview-alarm-grid"></div>
+    <div id="overviewAlarmMessage" class="overview-alarm-message normal">
+      当前四项报警信号正常
+    </div>
+  </section>
+</div>
+    </main>
+    <footer>
+      <span>FastAPI + WebSocket + SQLite · S7-200 SMART ST30 · TCP 102</span>
+      <span id="footerClock"></span>
+    </footer>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/static/common.js?v=1.6.0"></script>
+  <script src="/static/charts.js?v=1.6.0"></script>
+  <script src="/static/overview.js?v=1.6.0"></script>
+</body>
+</html>

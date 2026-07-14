@@ -1,0 +1,20 @@
+{
+  "mode": "simulation",
+  "plc_ip": "192.168.2.1",
+  "plc_port": 102,
+  "poll_interval_seconds": 1.0,
+  "reconnect_interval_seconds": 3.0,
+  "history_points": 3600,
+  "host": "127.0.0.1",
+  "web_port": 8000,
+  "open_browser": false,
+  "history_retention_days": 30,
+  "mysql_host": "127.0.0.1",
+  "mysql_port": 3306,
+  "mysql_database": "sensor",
+  "mysql_username": "root",
+  "mysql_password": "CHANGE_ME",
+  "mysql_table": "greenhouse_plc_data",
+  "mysql_alarm_table": "greenhouse_alarm_events",
+  "plc_id": "greenhouse-plc-sim"
+}

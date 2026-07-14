@@ -36,3 +36,10 @@ JavaSDKV2.2.2/**/.project
 *.tmp
 *.temp
 *.bak
+
+# PLC gateway local configuration and runtime data
+plc_web_hmi_v1_7/plc_web_hmi_v1_7/config.json
+plc_web_hmi_v1_7/plc_web_hmi_v1_7/data/
+plc_web_hmi_v1_7/plc_web_hmi_v1_7/__pycache__/
+plc_web_hmi_v1_7/plc_web_hmi_v1_7/**/*.py[cod]
+plc_web_hmi_v1_7.zip

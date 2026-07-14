@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>历史数据 · 环境参数监控与控制平台 · v1.7</title>
+  <link rel="stylesheet" href="/static/styles.css?v=1.6.0">
+</head>
+<body data-page="history">
+  <div class="app-shell">
+
+<header class="app-header">
+  <div class="header-main">
+    <div class="brand-block">
+      <div class="brand-mark">HMI</div>
+      <div>
+        <div class="eyebrow">S7-200 SMART · WEB HMI</div>
+        <h1>环境参数监控与控制平台</h1>
+        <p>实时监测、设备控制与检测数据归档</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="version-badge">v1.7</span>
+      <div class="connection-panel">
+        <span id="connectionDot" class="status-dot offline"></span>
+        <div class="connection-copy">
+          <strong id="connectionText">正在连接 PLC</strong>
+          <span id="connectionDetail">192.168.2.1:102</span>
+          <span id="lastUpdate">尚未收到数据</span>
+        </div>
+        <span id="modeBadge" class="mode-badge">PLC 模式</span>
+      </div>
+    </div>
+  </div>
+  <nav class="top-nav" aria-label="主栏目">
+    <a class="nav-link" href="/overview"><span class="nav-icon">◉</span><span>实时总览</span></a><a class="nav-link" href="/control"><span class="nav-icon">⚙</span><span>参数与设备控制</span></a><a class="nav-link active" href="/history"><span class="nav-icon">▤</span><span>历史数据</span></a>
+  </nav>
+
+</header>
+<div id="connectionBanner" class="connection-banner hidden"></div>
+
+    <main class="main-content">
+      <section class="page-intro">
+  <div>
+    <span class="section-kicker">DATA ARCHIVE</span>
+    <h2>历史数据查看与下载</h2>
+    <p>选定时间范围和采样周期后，表格与曲线同步覆盖该完整时间段。</p>
+  </div>
+  <div id="historyMeta" class="history-meta">正在读取数据归档信息…</div>
+</section>
+
+<section class="panel history-filter-panel">
+  <div class="quick-range-row">
+    <span>快速选择</span>
+    <button class="chip active" type="button" data-range-hours="1">最近 1 小时</button>
+    <button class="chip" type="button" data-range-hours="6">最近 6 小时</button>
+    <button class="chip" type="button" data-range-hours="24">最近 1 天</button>
+    <button class="chip" type="button" data-range-hours="168">最近 7 天</button>
+  </div>
+
+  <form id="historyForm" class="history-form">
+    <label>
+      <span>开始时间</span>
+      <input id="historyStart" type="datetime-local" step="1" required>
+    </label>
+    <label>
+      <span>结束时间</span>
+      <input id="historyEnd" type="datetime-local" step="1" required>
+    </label>
+    <label>
+      <span>采样周期</span>
+      <div class="sample-input">
+        <input id="historyIntervalValue" type="number" min="1" step="1" value="10" required>
+        <select id="historyIntervalUnit">
+          <option value="1">秒</option>
+          <option value="60">分钟</option>
+          <option value="3600">小时</option>
+        </select>
+      </div>
+    </label>
+    <fieldset class="sensor-picker">
+      <legend>检测参数</legend>
+      <label><input type="checkbox" name="historySensor" value="temperature" checked>温度</label>
+      <label><input type="checkbox" name="historySensor" value="humidity" checked>湿度</label>
+      <label><input type="checkbox" name="historySensor" value="co2" checked>CO₂</label>
+      <label><input type="checkbox" name="historySensor" value="light" checked>灯组状态</label>
+    </fieldset>
+    <div class="history-actions">
+      <button id="historyQueryBtn" class="button primary" type="submit">查询并绘图</button>
+      <button id="historyExportBtn" class="button export" type="button">下载 CSV</button>
+    </div>
+  </form>
+
+  <div id="historyActionMessage" class="action-message">
+    选择范围后点击“查询并绘图”。
+  </div>
+</section>
+
+<section id="historySummary" class="history-summary-grid"></section>
+
+<section class="panel history-chart-panel">
+  <div class="panel-heading">
+    <div>
+      <span class="section-kicker">SELECTED RANGE</span>
+      <h3>选定时间段曲线</h3>
+    </div>
+    <span id="historyResultNote" class="result-note">尚未查询</span>
+  </div>
+  <div class="chart-grid">
+    <article class="mini-chart history-chart-card" data-history-sensor="temperature">
+      <div class="chart-title"><span>温度</span><b>℃</b></div>
+      <canvas id="historyTemperatureChart"></canvas>
+    </article>
+    <article class="mini-chart history-chart-card" data-history-sensor="humidity">
+      <div class="chart-title"><span>湿度</span><b>%RH</b></div>
+      <canvas id="historyHumidityChart"></canvas>
+    </article>
+    <article class="mini-chart history-chart-card" data-history-sensor="co2">
+      <div class="chart-title"><span>CO₂</span><b>ppm</b></div>
+      <canvas id="historyCo2Chart"></canvas>
+    </article>
+    <article class="mini-chart history-chart-card" data-history-sensor="light">
+      <div class="chart-title"><span>灯组状态</span><b>OFF / ON</b></div>
+      <canvas id="historyLightChart"></canvas>
+    </article>
+  </div>
+</section>
+
+<section class="panel history-table-panel">
+  <div class="panel-heading">
+    <div><span class="section-kicker">DATA TABLE</span><h3>检测数值</h3></div>
+    <div class="table-tools">
+      <span id="historyPageInfo">第 0 / 0 页</span>
+      <select id="historyPageSize">
+        <option value="50">每页 50 条</option>
+        <option value="100" selected>每页 100 条</option>
+        <option value="200">每页 200 条</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead id="historyTableHead"></thead>
+      <tbody id="historyTableBody">
+        <tr><td class="empty-cell">请选择时间范围并查询</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <button id="historyPrevBtn" class="button secondary" type="button">上一页</button>
+    <button id="historyNextBtn" class="button secondary" type="button">下一页</button>
+  </div>
+</section>
+    </main>
+    <footer>
+      <span>FastAPI + WebSocket + SQLite · S7-200 SMART ST30 · TCP 102</span>
+      <span id="footerClock"></span>
+    </footer>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/static/common.js?v=1.6.0"></script>
+  <script src="/static/charts.js?v=1.6.0"></script>
+  <script src="/static/history.js?v=1.6.0"></script>
+</body>
+</html>

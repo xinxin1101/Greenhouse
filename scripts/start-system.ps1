@@ -1,6 +1,7 @@
 param(
     [switch]$InstallDeps,
     [switch]$SkipCollector,
+    [switch]$SkipGreenhouse,
     [switch]$SkipMysqlStart
 )
 
@@ -10,6 +11,7 @@ $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $BackendDir = Join-Path $Root "backend"
 $FrontendDir = Join-Path $Root "frontend"
 $CollectorDir = Join-Path $Root "JavaSDKV2.2.2\Demo"
+$GreenhouseDir = Join-Path $Root "plc_web_hmi_v1_7\plc_web_hmi_v1_7"
 $RuntimeDir = Join-Path $Root ".runtime"
 $LogDir = Join-Path $Root "logs"
 
@@ -27,6 +29,49 @@ function Resolve-Tool($Names) {
         }
     }
     throw "Required command not found: $($Names -join ', ')"
+}
+
+function Resolve-GreenhousePython {
+    if ($env:CONDA_PREFIX) {
+        $activePython = Join-Path $env:CONDA_PREFIX "python.exe"
+        if ((Split-Path $env:CONDA_PREFIX -Leaf) -eq "sensor" -and (Test-Path $activePython)) {
+            return $activePython
+        }
+    }
+
+    # Conda can be exposed as a PowerShell alias/function, whose Source is not
+    # an executable path. Check registered environment directories first.
+    $envDirectories = @()
+    if ($env:CONDA_ENVS_PATH) {
+        $envDirectories += $env:CONDA_ENVS_PATH -split ';'
+    }
+
+    $environmentFile = Join-Path $env:USERPROFILE ".conda\environments.txt"
+    if (Test-Path $environmentFile) {
+        $envDirectories += Get-Content $environmentFile -ErrorAction SilentlyContinue
+    }
+
+    foreach ($directory in $envDirectories | Where-Object { $_ }) {
+        $normalizedDirectory = $directory.Trim()
+        $sensorPython = if ((Split-Path $normalizedDirectory -Leaf) -eq "sensor") {
+            Join-Path $normalizedDirectory "python.exe"
+        } else {
+            Join-Path $normalizedDirectory "sensor\python.exe"
+        }
+        if (Test-Path $sensorPython) {
+            return $sensorPython
+        }
+    }
+
+    $base = (& conda --no-plugins info --base 2>$null | Select-Object -First 1).Trim()
+    if ($base) {
+        $sensorPython = Join-Path $base "envs\sensor\python.exe"
+        if (Test-Path $sensorPython) {
+            return $sensorPython
+        }
+    }
+
+    throw "Conda environment 'sensor' was not found. Activate it first, or create it before starting the greenhouse service."
 }
 
 function Test-PortListening($Port) {
@@ -73,6 +118,16 @@ Write-Step "Project root: $Root"
 $java = Resolve-Tool @("java.exe", "java")
 $mvn = Resolve-Tool @("mvn.cmd", "mvn")
 $npm = Resolve-Tool @("npm.cmd", "npm")
+if (-not $SkipGreenhouse) {
+    if (-not (Test-Path $GreenhouseDir)) {
+        throw "Greenhouse service directory not found: $GreenhouseDir"
+    }
+    $greenhouseConfig = Join-Path $GreenhouseDir "config.json"
+    if (-not (Test-Path $greenhouseConfig)) {
+        throw "Greenhouse local configuration is missing. Copy config.example.json to config.json and fill in the MySQL settings."
+    }
+    $greenhousePython = Resolve-GreenhousePython
+}
 
 if (-not $SkipMysqlStart) {
     $mysqlService = Get-Service -ErrorAction SilentlyContinue |
@@ -119,10 +174,24 @@ if ($InstallDeps) {
     } finally {
         Pop-Location
     }
+
+    if (-not $SkipGreenhouse) {
+        Write-Step "Installing greenhouse Python dependencies..."
+        & $greenhousePython -m pip install -r (Join-Path $GreenhouseDir "requirements.txt")
+    }
 }
 
 if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
     Write-Warning "frontend\node_modules does not exist. Run scripts\start-system.ps1 -InstallDeps first."
+}
+
+if (-not $SkipGreenhouse) {
+    if (-not (Test-PortListening 8000)) {
+        Start-ManagedProcess "greenhouse-hmi" $greenhousePython @("run.py") $GreenhouseDir
+    } else {
+        Write-Step "Greenhouse HMI port 8000 is already listening; skip starting greenhouse service."
+    }
+    Wait-Port 8000 "Greenhouse HMI"
 }
 
 if (-not (Test-PortListening 8080)) {
@@ -163,6 +232,8 @@ Write-Host ""
 Write-Step "Startup finished."
 Write-Host "Frontend: http://localhost:5173"
 Write-Host "Backend:  http://localhost:8080/api/sensor/summary"
+if (-not $SkipGreenhouse) {
+    Write-Host "Greenhouse: http://localhost:8000"
+}
 Write-Host "Logs:     $LogDir"
 Write-Host "Stop:     scripts\stop-system.ps1"
-

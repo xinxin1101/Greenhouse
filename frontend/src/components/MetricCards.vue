@@ -1,60 +1,118 @@
 <script setup lang="ts">
-import type { MetricMode, SensorReading } from '../types/sensor'
+import { computed } from 'vue'
+import type { DataSource, EnvironmentReading, GreenhouseRealtimeState, MetricMode } from '../types/sensor'
 
-defineProps<{
-  latest: SensorReading | null
+const props = defineProps<{
+  latest: EnvironmentReading | null
   selected: MetricMode
+  source: DataSource
+  greenhouseState?: GreenhouseRealtimeState | null
 }>()
 
 const emit = defineEmits<{
   select: [metric: MetricMode]
 }>()
 
-function fmt(value: number | undefined, digits = 1) {
+function fmt(value: number | null | undefined, digits = 1) {
   return typeof value === 'number' ? value.toFixed(digits) : '--'
 }
 
-const cards: Array<{
+type MetricCard = {
   key: MetricMode
   icon: string
   title: string
   unit: string
   tone: string
-  read: (latest: SensorReading | null) => string
-}> = [
-  {
-    key: 'all',
-    icon: '▦',
-    title: '综合视图',
-    unit: '全部指标',
-    tone: 'slate',
-    read: () => 'Overview'
-  },
-  {
-    key: 'temperature',
-    icon: '℃',
-    title: '温度',
-    unit: '摄氏度',
-    tone: 'rose',
-    read: (latest) => `${fmt(latest?.temperature)} ℃`
-  },
-  {
-    key: 'humidity',
-    icon: '%',
-    title: '湿度',
-    unit: '空气湿度',
-    tone: 'teal',
-    read: (latest) => `${fmt(latest?.humidity)} %`
-  },
-  {
-    key: 'light',
-    icon: 'lx',
-    title: '光照',
-    unit: 'Lux',
-    tone: 'amber',
-    read: (latest) => `${fmt(latest?.lightIntensity, 0)} Lux`
+  read: (latest: EnvironmentReading | null) => string
+}
+
+const cards = computed<MetricCard[]>(() => {
+  const common: MetricCard[] = [
+    {
+      key: 'all',
+      icon: '▦',
+      title: '综合视图',
+      unit: '全部指标',
+      tone: 'slate',
+      read: () => 'Overview'
+    },
+    {
+      key: 'temperature',
+      icon: '℃',
+      title: '温度',
+      unit: '摄氏度',
+      tone: 'rose',
+      read: (latest) => `${fmt(latest?.temperature)} ℃`
+    },
+    {
+      key: 'humidity',
+      icon: '%',
+      title: '湿度',
+      unit: '空气湿度',
+      tone: 'teal',
+      read: (latest) => `${fmt(latest?.humidity)} %`
+    }
+  ]
+
+  if (props.source === 'greenhouse') {
+    return [
+      {
+        key: 'all',
+        icon: '▦',
+        title: '综合视图',
+        unit: '全部指标',
+        tone: 'slate',
+        read: () => 'Overview'
+      },
+      {
+        key: 'temperature',
+        icon: '℃',
+        title: '温度',
+        unit: '摄氏度',
+        tone: 'rose',
+        read: () => `${fmt(props.greenhouseState?.measurements?.temperature)} ℃`
+      },
+      {
+        key: 'humidity',
+        icon: '%',
+        title: '湿度',
+        unit: '空气湿度',
+        tone: 'teal',
+        read: () => `${fmt(props.greenhouseState?.measurements?.humidity)} %`
+      },
+      {
+        key: 'co2',
+        icon: 'CO₂',
+        title: 'CO₂',
+        unit: '浓度 · ppm',
+        tone: 'blue',
+        read: () => `${fmt(props.greenhouseState?.measurements?.co2, 0)} ppm`
+      },
+      {
+        key: 'light',
+        icon: '●',
+        title: '灯组',
+        unit: 'PLC 实际状态',
+        tone: 'amber',
+        read: () => props.greenhouseState?.run_status?.lamp_group == null
+          ? '--'
+          : props.greenhouseState.run_status.lamp_group ? '已开启' : '已关闭'
+      }
+    ]
   }
-]
+
+  return [
+    ...common,
+    {
+      key: 'light',
+      icon: 'lx',
+      title: '光照',
+      unit: 'Lux',
+      tone: 'amber',
+      read: (latest) => `${fmt(latest?.lightIntensity, 0)} Lux`
+    }
+  ]
+})
 </script>
 
 <template>

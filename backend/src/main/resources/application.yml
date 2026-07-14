@@ -8,5 +8,7 @@ app:
     password: "269756"
   point-cloud:
     directory: E:/study/new_sensor/pointCloud
+  greenhouse:
+    gateway-url: http://127.0.0.1:8000
   cors:
     allowed-origins: http://localhost:5173,http://127.0.0.1:5173
