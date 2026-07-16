@@ -75,8 +75,11 @@ const greenhouseTraceLoading = ref(false)
 const greenhouseHistory = ref<GreenhouseHistoryResult | null>(null)
 const greenhouseHistoryMeta = ref<Record<string, unknown> | null>(null)
 const greenhouseHistoryLoading = ref(false)
+const dashboardRefreshPending = ref(false)
+const dashboardRefreshFeedback = ref('')
 let refreshTimer: number | null = null
 let greenhouseRefreshTimer: number | null = null
+let dashboardRefreshFeedbackTimer: number | null = null
 let loadSequence = 0
 
 const latest = computed(() => summary.value.latest)
@@ -153,6 +156,19 @@ async function loadDashboard() {
   }
 }
 
+async function refreshDashboardNow() {
+  if (loading.value) return
+  dashboardRefreshPending.value = true
+  dashboardRefreshFeedback.value = '刷新中'
+  if (dashboardRefreshFeedbackTimer) window.clearTimeout(dashboardRefreshFeedbackTimer)
+  await loadDashboard()
+  dashboardRefreshPending.value = false
+  dashboardRefreshFeedback.value = error.value ? '刷新失败' : '已刷新'
+  dashboardRefreshFeedbackTimer = window.setTimeout(() => {
+    dashboardRefreshFeedback.value = ''
+  }, 1800)
+}
+
 async function loadGreenhouseOperations() {
   greenhouseLoading.value = true
   greenhouseError.value = ''
@@ -167,7 +183,19 @@ async function loadGreenhouseOperations() {
       targetTemperature.value = state.targets.temperature
     }
   } catch (err) {
-    greenhouseError.value = err instanceof Error ? err.message : '温室 PLC 状态加载失败'
+    greenhouseError.value = greenhouseActionErrorMessage(err)
+  } finally {
+    greenhouseLoading.value = false
+  }
+}
+
+async function loadGreenhouseAlarms(limit = 5000) {
+  greenhouseLoading.value = true
+  greenhouseError.value = ''
+  try {
+    greenhouseAlarms.value = await fetchGreenhouseAlarms(limit)
+  } catch (err) {
+    greenhouseError.value = greenhouseActionErrorMessage(err)
   } finally {
     greenhouseLoading.value = false
   }
@@ -179,6 +207,22 @@ async function runGreenhouseAction(action: () => Promise<unknown>) {
   try {
     await action()
     await Promise.all([loadGreenhouseOperations(), loadDashboard()])
+  } catch (err) {
+    greenhouseError.value = greenhouseActionErrorMessage(err)
+  } finally {
+    greenhouseActionLoading.value = false
+  }
+}
+
+async function runGreenhouseAlarmAction(action: () => Promise<unknown>) {
+  greenhouseActionLoading.value = true
+  greenhouseError.value = ''
+  try {
+    await action()
+    await loadGreenhouseAlarms()
+    if (dataSource.value === 'greenhouse') {
+      void loadDashboard()
+    }
   } catch (err) {
     greenhouseError.value = greenhouseActionErrorMessage(err)
   } finally {
@@ -210,7 +254,8 @@ function setGreenhouseFan(state: boolean) {
 }
 
 function acknowledgeAlarms() {
-  void runGreenhouseAction(acknowledgeGreenhouseAlarms)
+  const runner = greenhouseView.value === 'alarms' ? runGreenhouseAlarmAction : runGreenhouseAction
+  void runner(acknowledgeGreenhouseAlarms)
 }
 
 function acknowledgeAllAlarms() {
@@ -219,11 +264,11 @@ function acknowledgeAllAlarms() {
       .filter((alarm) => !alarm.acknowledged)
       .map((alarm) => alarm.plcId)
   )]
-  void runGreenhouseAction(() => acknowledgeAllGreenhouseAlarms(plcIds))
+  void runGreenhouseAlarmAction(() => acknowledgeAllGreenhouseAlarms(plcIds))
 }
 
 function acknowledgeAlarmEvent(alarm: GreenhouseAlarmEvent) {
-  void runGreenhouseAction(() => acknowledgeGreenhouseAlarm(alarm.id, alarm.plcId))
+  void runGreenhouseAlarmAction(() => acknowledgeGreenhouseAlarm(alarm.id, alarm.plcId))
 }
 
 async function loadGreenhouseTrace(sensor: 'temperature' | 'humidity' | 'co2' = 'temperature') {
@@ -297,7 +342,7 @@ function selectGreenhouseView(next: GreenhouseView) {
   greenhouseView.value = next
   if (next === 'curves') void loadGreenhouseTrace()
   if (next === 'history') void loadGreenhouseHistoryMeta()
-  if (next === 'alarms') void loadGreenhouseOperations()
+  if (next === 'alarms') void loadGreenhouseAlarms()
 }
 
 function selectDataSource(next: DataSource) {
@@ -345,7 +390,11 @@ function setupRefresh() {
 
   greenhouseRefreshTimer = window.setInterval(() => {
     if (entered.value && dataSource.value === 'greenhouse') {
-      void loadGreenhouseOperations()
+      if (greenhouseView.value === 'alarms') {
+        void loadGreenhouseAlarms()
+      } else {
+        void loadGreenhouseOperations()
+      }
     }
   }, 1000)
 }
@@ -357,6 +406,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (refreshTimer) window.clearInterval(refreshTimer)
   if (greenhouseRefreshTimer) window.clearInterval(greenhouseRefreshTimer)
+  if (dashboardRefreshFeedbackTimer) window.clearTimeout(dashboardRefreshFeedbackTimer)
 })
 </script>
 
@@ -379,7 +429,12 @@ onBeforeUnmount(() => {
       </div>
       <div class="header-actions">
         <button class="secondary-action" @click="openSystemStatus">系统状态</button>
-        <button class="secondary-action" @click="loadDashboard">刷新数据</button>
+        <div class="refresh-control header-refresh-control">
+          <span v-if="dashboardRefreshFeedback" class="refresh-feedback" :class="{ pending: dashboardRefreshPending, error: error }">{{ dashboardRefreshFeedback }}</span>
+          <button class="secondary-action" :class="{ refreshing: dashboardRefreshPending }" :disabled="loading" @click="refreshDashboardNow">
+            {{ dashboardRefreshPending ? '刷新中' : '刷新数据' }}
+          </button>
+        </div>
         <button class="ghost-action" @click="entered = false">返回首页</button>
       </div>
     </header>
@@ -537,6 +592,7 @@ onBeforeUnmount(() => {
         :meta="greenhouseHistoryMeta"
         :loading="greenhouseHistoryLoading"
         :error="greenhouseError"
+        :target-temperature="greenhouseState?.targets?.temperature ?? targetTemperature"
         @query="queryHistory"
         @export="exportHistory"
       />
@@ -547,7 +603,7 @@ onBeforeUnmount(() => {
         :loading="greenhouseLoading"
         :action-loading="greenhouseActionLoading"
         :error="greenhouseError"
-        @refresh="loadGreenhouseOperations"
+        @refresh="loadGreenhouseAlarms"
         @acknowledge="acknowledgeAlarms"
         @acknowledge-all="acknowledgeAllAlarms"
         @acknowledge-one="acknowledgeAlarmEvent"

@@ -8,7 +8,7 @@ const props = defineProps<{
   points: EnvironmentTrendPoint[]
   pointClouds: PointCloudRecord[]
   metric: MetricMode
-  targetTemperature: number
+  targetTemperature: number | null
   source: DataSource
 }>()
 
@@ -23,6 +23,9 @@ const option = computed(() => {
   const greenhouse = props.source === 'greenhouse'
 
   if (props.metric === 'all' || props.metric === 'temperature') {
+    const targetTemperatureData = props.points.map((p) => (
+      typeof p.targetTemperature === 'number' ? p.targetTemperature : props.targetTemperature
+    ))
     series.push({
       type: 'line',
       name: '温度',
@@ -33,14 +36,16 @@ const option = computed(() => {
       itemStyle: { color: '#e25656' },
       markLine: { silent: true, symbol: 'none', lineStyle: { color: '#2d7d46', type: 'dashed' }, data: markLines }
     })
-    series.push({
-      type: 'line',
-      name: '目标温度',
-      data: props.points.map(() => props.targetTemperature),
-      smooth: false,
-      symbol: 'none',
-      lineStyle: { width: 1.5, color: '#777', type: 'dotted' }
-    })
+    if (targetTemperatureData.some((value) => typeof value === 'number')) {
+      series.push({
+        type: 'line',
+        name: '目标温度',
+        data: targetTemperatureData,
+        smooth: false,
+        symbol: 'none',
+        lineStyle: { width: 1.5, color: '#777', type: 'dotted' }
+      })
+    }
   }
   if (props.metric === 'all' || props.metric === 'humidity') {
     series.push({

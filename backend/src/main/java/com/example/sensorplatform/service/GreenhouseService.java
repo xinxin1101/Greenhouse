@@ -6,9 +6,12 @@ import com.example.sensorplatform.model.GreenhouseSummary;
 import com.example.sensorplatform.model.GreenhouseTrendPoint;
 import com.example.sensorplatform.repository.GreenhouseRepository;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -89,18 +92,44 @@ public class GreenhouseService {
     }
 
     public JsonNode acknowledgeAlarms() {
-        return greenhouseGatewayClient.post("api/alarms/ack", objectMapperEmptyObject());
+        int updated = greenhouseRepository.acknowledgeActiveAlarmEvents();
+        return ackResult(updated, "当前报警已确认");
     }
 
     public JsonNode acknowledgeAllAlarms(JsonNode request) {
-        return greenhouseGatewayClient.post("api/alarms/ack-all", request);
+        JsonNode idsNode = request.path("plc_ids");
+        if (!idsNode.isArray()) {
+            throw new IllegalArgumentException("确认范围缺少 PLC 标识");
+        }
+
+        List<String> plcIds = new ArrayList<>();
+        idsNode.forEach(node -> {
+            if (node.isTextual() && !node.asText().trim().isEmpty()) {
+                plcIds.add(node.asText().trim());
+            }
+        });
+
+        int updated = greenhouseRepository.acknowledgeUnacknowledgedAlarmEvents(plcIds);
+        if (updated == 0) {
+            throw new IllegalArgumentException("没有可确认的报警记录，请刷新页面后重试");
+        }
+        return ackResult(updated, "所有未确认报警已确认");
     }
 
     public JsonNode acknowledgeAlarmEvent(long eventId, JsonNode request) {
-        return greenhouseGatewayClient.post("api/alarms/" + eventId + "/ack", request);
+        String plcId = request.path("plc_id").asText("");
+        boolean updated = greenhouseRepository.acknowledgeAlarmEvent(eventId, plcId);
+        if (!updated) {
+            throw new IllegalArgumentException("报警事件不存在、已确认，或不属于当前 PLC");
+        }
+        return ackResult(1, "报警记录已确认");
     }
 
-    private JsonNode objectMapperEmptyObject() {
-        return com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+    private ObjectNode ackResult(int updated, String message) {
+        ObjectNode result = JsonNodeFactory.instance.objectNode();
+        result.put("ok", true);
+        result.put("updated", updated);
+        result.put("message", message);
+        return result;
     }
 }

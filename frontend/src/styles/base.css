@@ -580,15 +580,15 @@ button {
 }
 
 .greenhouse-history-panel .history-results-grid {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 320px;
+  min-height: 320px;
   grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
 }
 
 .greenhouse-history-panel .history-results-grid .workspace-section {
-  height: auto;
-  min-height: 0;
+  height: 100%;
+  min-height: 320px;
 }
 
 .greenhouse-history-panel .history-chart-section {
@@ -598,8 +598,8 @@ button {
 
 .greenhouse-history-panel .history-chart-section .trend-chart {
   flex: 1;
-  height: auto;
-  min-height: 0;
+  height: 100%;
+  min-height: 260px;
 }
 
 .greenhouse-alarm-panel .workspace-section {
@@ -1021,12 +1021,31 @@ button {
   color: #68776d;
 }
 
+.refresh-feedback.error {
+  color: #b04444;
+}
+
 .refresh-button.refreshing {
   animation: greenhouse-refresh-spin 0.8s linear infinite;
 }
 
+.secondary-action.refreshing {
+  color: var(--green-800);
+  background: #edf7f1;
+  animation: refresh-pulse 1s ease-in-out infinite;
+}
+
+.header-refresh-control {
+  align-items: center;
+}
+
 @keyframes greenhouse-refresh-spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes refresh-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(31, 107, 59, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(31, 107, 59, 0.08); }
 }
 
 .greenhouse-section h3 {
@@ -1075,6 +1094,18 @@ button {
   border: 1px solid var(--line);
   border-radius: 7px;
   padding: 0 8px;
+}
+
+.target-validation {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  color: #8a4b08;
+  background: #fff7e6;
+  border: 1px solid #f4d28b;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .target-feedback {

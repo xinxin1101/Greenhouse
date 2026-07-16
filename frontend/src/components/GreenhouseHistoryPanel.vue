@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import TrendChart from './TrendChart.vue'
 import type { EnvironmentTrendPoint, GreenhouseHistoryQuery, GreenhouseHistoryResult, GreenhouseHistorySensor } from '../types/sensor'
 
-const props = defineProps<{ result: GreenhouseHistoryResult | null; meta: Record<string, unknown> | null; loading: boolean; error: string }>()
+const props = defineProps<{
+  result: GreenhouseHistoryResult | null
+  meta: Record<string, unknown> | null
+  loading: boolean
+  error: string
+  targetTemperature: number | null
+}>()
 const emit = defineEmits<{ query: [payload: GreenhouseHistoryQuery]; export: [payload: GreenhouseHistoryQuery] }>()
 
 const end = new Date()
@@ -23,16 +29,28 @@ const payload = computed<GreenhouseHistoryQuery>(() => ({
   sensors: sensors.value,
   limit: 5000
 }))
-const points = computed<EnvironmentTrendPoint[]>(() => (props.result?.rows ?? []).map((row) => ({ recordTime: row.time_text, temperature: row.temperature ?? null, humidity: row.humidity ?? null, co2: row.co2 ?? null, lightOn: row.light ?? null })))
+const points = computed<EnvironmentTrendPoint[]>(() => (props.result?.rows ?? []).map((row) => ({
+  recordTime: row.time_text,
+  temperature: row.temperature ?? null,
+  targetTemperature: row.target_temperature ?? props.targetTemperature,
+  humidity: row.humidity ?? null,
+  co2: row.co2 ?? null,
+  lightOn: row.light ?? null
+})))
 const totalPages = computed(() => Math.max(1, Math.ceil((props.result?.rows.length ?? 0) / pageSize)))
 const pageRows = computed(() => (props.result?.rows ?? []).slice((page.value - 1) * pageSize, page.value * pageSize))
+
+watch(() => props.result?.rows, (rows) => {
+  const count = rows?.length ?? 0
+  page.value = count ? Math.ceil(count / pageSize) : 1
+})
 
 function setRange(hours: number) {
   const nextEnd = new Date()
   startTime.value = toInput(new Date(nextEnd.getTime() - hours * 3600 * 1000))
   endTime.value = toInput(nextEnd)
 }
-function runQuery() { page.value = 1; emit('query', payload.value) }
+function runQuery() { emit('query', payload.value) }
 function toggleSensor(name: GreenhouseHistorySensor) {
   sensors.value = sensors.value.includes(name) ? sensors.value.filter((sensor) => sensor !== name) : [...sensors.value, name]
 }
@@ -57,7 +75,7 @@ function display(value: number | null | undefined, digits = 1) { return typeof v
       <div class="history-results-grid">
         <section class="workspace-section history-chart-section">
           <div class="greenhouse-section-heading"><h3>选定时间段趋势</h3><span v-if="result">返回 {{ result.returned_count }} 条，原始 {{ result.raw_count }} 条</span></div>
-          <TrendChart :points="points" :point-clouds="[]" metric="all" :target-temperature="0" source="greenhouse" />
+          <TrendChart :points="points" :point-clouds="[]" metric="all" :target-temperature="targetTemperature" source="greenhouse" />
         </section>
         <section class="workspace-section history-table-section">
           <div class="greenhouse-section-heading"><h3>检测数值</h3><span>每页 {{ pageSize }} 条 · 第 {{ result?.rows.length ? page : 0 }} / {{ result?.rows.length ? totalPages : 0 }} 页</span></div>

@@ -779,6 +779,7 @@ class PLCService:
             self.history_store.record(
                 wall_time,
                 raw.get("measurements", {}),
+                raw.get("targets", {}),
             )
         except Exception as exc:
             logger.warning("检测数据写入历史数据库失败：%s", exc)

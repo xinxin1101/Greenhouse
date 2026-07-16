@@ -20,6 +20,13 @@ SENSOR_COLUMNS = {
     "light": "light_on",
 }
 
+TARGET_COLUMNS = {
+    "temperature": "target_temperature",
+    "humidity": "target_humidity",
+    "co2": "target_co2",
+    "light": "target_light_on",
+}
+
 
 class HistoryStore:
     """MySQL 环境数据与报警事件归档。
@@ -50,6 +57,10 @@ class HistoryStore:
                 humidity DOUBLE NULL,
                 co2 DOUBLE NULL,
                 light_on TINYINT(1) NULL,
+                target_temperature DOUBLE NULL,
+                target_humidity DOUBLE NULL,
+                target_co2 DOUBLE NULL,
+                target_light_on TINYINT(1) NULL,
                 record_time DATETIME(3) NOT NULL,
                 INDEX idx_greenhouse_record_time (record_time),
                 INDEX idx_greenhouse_plc_time (plc_id, record_time)
@@ -78,6 +89,7 @@ class HistoryStore:
                 cursor.execute(measurement_sql)
                 cursor.execute(alarm_sql)
             connection.commit()
+            self._ensure_measurement_target_columns(connection)
 
     def close(self) -> None:
         with self._lock:
@@ -85,13 +97,23 @@ class HistoryStore:
                 self._mysql_write_connection.close()
                 self._mysql_write_connection = None
 
-    def record(self, timestamp: float, measurements: dict[str, Any]) -> None:
+    def record(
+        self,
+        timestamp: float,
+        measurements: dict[str, Any],
+        targets: dict[str, Any] | None = None,
+    ) -> None:
+        target_values = targets or {}
         values = (
             self.config.plc_id,
             self._number_or_none(measurements.get("temperature")),
             self._number_or_none(measurements.get("humidity")),
             self._number_or_none(measurements.get("co2")),
             self._boolean_int_or_none(measurements.get("light")),
+            self._number_or_none(target_values.get("temperature")),
+            self._number_or_none(target_values.get("humidity")),
+            self._number_or_none(target_values.get("co2")),
+            self._boolean_int_or_none(target_values.get("light")),
             datetime.fromtimestamp(float(timestamp)),
         )
         with self._lock:
@@ -101,8 +123,10 @@ class HistoryStore:
                     cursor.execute(
                         f"""
                         INSERT INTO `{self.table_name}`
-                        (plc_id, temperature, humidity, co2, light_on, record_time)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        (plc_id, temperature, humidity, co2, light_on,
+                         target_temperature, target_humidity, target_co2,
+                         target_light_on, record_time)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         values,
                     )
@@ -402,7 +426,13 @@ class HistoryStore:
             limit,
         )
         columns = [SENSOR_COLUMNS[name] for name in selected]
-        column_sql = ", ".join(f"`{column}`" for column in columns)
+        target_columns = [
+            TARGET_COLUMNS[name]
+            for name in selected
+            if name in TARGET_COLUMNS
+        ]
+        select_columns = columns + target_columns
+        column_sql = ", ".join(f"`{column}`" for column in select_columns)
         start_datetime = datetime.fromtimestamp(start_timestamp)
         end_datetime = datetime.fromtimestamp(end_timestamp)
 
@@ -478,6 +508,12 @@ class HistoryStore:
                 if sensor == "light" and value is not None:
                     value = int(value)
                 item[sensor] = value
+                target_column = TARGET_COLUMNS.get(sensor)
+                if target_column:
+                    target_value = row.get(target_column)
+                    if sensor == "light" and target_value is not None:
+                        target_value = int(target_value)
+                    item[target_column] = target_value
             result_rows.append(item)
 
         return {
@@ -578,6 +614,33 @@ class HistoryStore:
                 self._mysql_write_connection.close()
             finally:
                 self._mysql_write_connection = None
+
+    def _ensure_measurement_target_columns(self, connection: MySqlConnection) -> None:
+        required = {
+            "target_temperature": "DOUBLE NULL",
+            "target_humidity": "DOUBLE NULL",
+            "target_co2": "DOUBLE NULL",
+            "target_light_on": "TINYINT(1) NULL",
+        }
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COLUMN_NAME AS column_name
+                FROM information_schema.columns
+                WHERE table_schema = %s AND table_name = %s
+                """,
+                (self.config.mysql_database, self.table_name),
+            )
+            existing = {
+                str(row["column_name"])
+                for row in cursor.fetchall()
+            }
+            for column, definition in required.items():
+                if column not in existing:
+                    cursor.execute(
+                        f"ALTER TABLE `{self.table_name}` ADD COLUMN `{column}` {definition}"
+                    )
+        connection.commit()
 
     @contextmanager
     def _mysql_read_connection(self) -> Iterator[MySqlConnection]:

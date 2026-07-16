@@ -79,6 +79,69 @@ public class GreenhouseRepository {
         return events;
     }
 
+    public int acknowledgeActiveAlarmEvents() {
+        String sql = """
+                UPDATE greenhouse_alarm_events
+                SET acknowledged = 1
+                WHERE active = 1 AND acknowledged = 0
+                """;
+        try (Connection conn = connectionFactory.open();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            return stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to acknowledge active greenhouse alarms", e);
+        }
+    }
+
+    public int acknowledgeUnacknowledgedAlarmEvents(List<String> plcIds) {
+        List<String> normalizedIds = plcIds.stream()
+                .map(String::trim)
+                .filter(id -> !id.isEmpty())
+                .distinct()
+                .toList();
+        if (normalizedIds.isEmpty()) {
+            throw new IllegalArgumentException("至少需要提供一个 PLC 标识");
+        }
+
+        String placeholders = String.join(",", normalizedIds.stream().map(id -> "?").toList());
+        String sql = "UPDATE greenhouse_alarm_events "
+                + "SET acknowledged = 1 "
+                + "WHERE acknowledged = 0 AND plc_id IN (" + placeholders + ")";
+        try (Connection conn = connectionFactory.open();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < normalizedIds.size(); i++) {
+                stmt.setString(i + 1, normalizedIds.get(i));
+            }
+            return stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to acknowledge greenhouse alarms", e);
+        }
+    }
+
+    public boolean acknowledgeAlarmEvent(long eventId, String plcId) {
+        String normalizedPlcId = plcId == null ? "" : plcId.trim();
+        if (eventId <= 0) {
+            throw new IllegalArgumentException("报警事件 ID 无效");
+        }
+        if (normalizedPlcId.isEmpty()) {
+            throw new IllegalArgumentException("PLC 标识不能为空");
+        }
+
+        String sql = """
+                UPDATE greenhouse_alarm_events
+                SET acknowledged = 1
+                WHERE id = ? AND plc_id = ? AND acknowledged = 0
+                """;
+        try (Connection conn = connectionFactory.open();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, eventId);
+            stmt.setString(2, normalizedPlcId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to acknowledge greenhouse alarm event", e);
+        }
+    }
+
     public List<GreenhouseTrendPoint> findTrend(
             String mode,
             LocalDateTime start,

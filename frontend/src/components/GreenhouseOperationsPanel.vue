@@ -31,7 +31,14 @@ const co2Dirty = ref(false)
 const manualRefreshPending = ref(false)
 const refreshObservedLoading = ref(false)
 const refreshFeedback = ref('')
+const targetValidationMessage = ref('')
 let refreshFeedbackTimer: number | null = null
+
+const targetLimits = {
+  temperature: { label: '温度', min: -20, max: 60, unit: '℃' },
+  humidity: { label: '湿度', min: 0, max: 100, unit: '%RH' },
+  co2: { label: 'CO₂', min: 0, max: 10000, unit: 'ppm' }
+} as const
 
 watch(
   () => props.state?.targets,
@@ -55,7 +62,7 @@ watch(
     if (refreshObservedLoading.value) {
       manualRefreshPending.value = false
       refreshObservedLoading.value = false
-      refreshFeedback.value = props.error ? '' : '已刷新'
+      refreshFeedback.value = props.error ? '刷新失败' : '已刷新'
       if (refreshFeedbackTimer) window.clearTimeout(refreshFeedbackTimer)
       refreshFeedbackTimer = window.setTimeout(() => {
         refreshFeedback.value = ''
@@ -130,12 +137,43 @@ function valueText(value: number | null | undefined, digits = 1) {
   return typeof value === 'number' ? value.toFixed(digits) : '--'
 }
 
+function validateTargetValue(key: keyof typeof targetLimits, value: number | null) {
+  if (value === null) return ''
+  const limit = targetLimits[key]
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return `${limit.label}请输入有效数字。`
+  }
+  if (value < limit.min || value > limit.max) {
+    return `${limit.label}设定范围为 ${limit.min} 到 ${limit.max} ${limit.unit}，请调整后再写入。`
+  }
+  return ''
+}
+
+function clearTargetValidation() {
+  const validation =
+    validateTargetValue('temperature', temperature.value) ||
+    validateTargetValue('humidity', humidity.value) ||
+    validateTargetValue('co2', co2.value)
+  if (!validation) targetValidationMessage.value = ''
+}
+
 function applyTargets() {
+  const validation =
+    validateTargetValue('temperature', temperature.value) ||
+    validateTargetValue('humidity', humidity.value) ||
+    validateTargetValue('co2', co2.value)
+  if (validation) {
+    targetValidationMessage.value = validation
+    return
+  }
   const payload: GreenhouseTargetsUpdate = {}
   if (temperature.value !== null) payload.temperature = temperature.value
   if (humidity.value !== null) payload.humidity = humidity.value
   if (co2.value !== null) payload.co2 = co2.value
-  if (Object.keys(payload).length) emit('targets', payload)
+  if (Object.keys(payload).length) {
+    targetValidationMessage.value = ''
+    emit('targets', payload)
+  }
 }
 
 function refreshNow() {
@@ -188,17 +226,18 @@ onBeforeUnmount(() => {
         <div class="target-fields">
           <label>
             <span>温度 ℃</span>
-            <input v-model.number="temperature" type="number" min="-20" max="60" step="0.1" :disabled="actionLoading" @input="temperatureDirty = true" />
+            <input v-model.number="temperature" type="number" min="-20" max="60" step="0.1" :disabled="actionLoading" @input="temperatureDirty = true; clearTargetValidation()" />
           </label>
           <label>
             <span>湿度 %RH</span>
-            <input v-model.number="humidity" type="number" min="0" max="100" step="0.1" :disabled="actionLoading" @input="humidityDirty = true" />
+            <input v-model.number="humidity" type="number" min="0" max="100" step="0.1" :disabled="actionLoading" @input="humidityDirty = true; clearTargetValidation()" />
           </label>
           <label>
             <span>CO₂ ppm</span>
-            <input v-model.number="co2" type="number" min="0" max="10000" step="1" :disabled="actionLoading" @input="co2Dirty = true" />
+            <input v-model.number="co2" type="number" min="0" max="10000" step="1" :disabled="actionLoading" @input="co2Dirty = true; clearTargetValidation()" />
           </label>
         </div>
+        <p v-if="targetValidationMessage" class="target-validation" role="alert">{{ targetValidationMessage }}</p>
         <div class="target-feedback">
           <span>PLC 设定反馈</span>
           <b>温度 {{ valueText(state?.feedback?.temperature) }} ℃</b>

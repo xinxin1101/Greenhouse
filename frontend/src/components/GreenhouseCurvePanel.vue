@@ -30,8 +30,12 @@ const duration = ref(600)
 const interval = ref(10)
 const shape = ref<GreenhouseCurveRequest['shape']>('linear')
 const chartEl = ref<HTMLDivElement | null>(null)
+const refreshPending = ref(false)
+const refreshObservedLoading = ref(false)
+const refreshFeedback = ref('')
 let chart: ECharts | null = null
 let resizeObserver: ResizeObserver | null = null
+let refreshFeedbackTimer: number | null = null
 
 const labels = { temperature: '温度', humidity: '湿度', co2: 'CO2' }
 const units = { temperature: '°C', humidity: '%RH', co2: 'ppm' }
@@ -51,6 +55,14 @@ function submit() {
     interval_seconds: interval.value,
     shape: shape.value
   })
+}
+
+function refreshTrace() {
+  if (props.loading) return
+  refreshPending.value = true
+  refreshObservedLoading.value = false
+  refreshFeedback.value = '刷新中'
+  emit('trace', sensor.value)
 }
 
 function plannedValue(plan: GreenhouseCurvePlan, timestamp: number) {
@@ -97,6 +109,25 @@ watch(sensor, () => {
 })
 watch(() => props.state?.targets, syncStartValue, { immediate: true })
 watch(chartOption, renderChart, { deep: true })
+watch(
+  () => props.loading,
+  (loading) => {
+    if (!refreshPending.value) return
+    if (loading) {
+      refreshObservedLoading.value = true
+      return
+    }
+    if (refreshObservedLoading.value) {
+      refreshPending.value = false
+      refreshObservedLoading.value = false
+      refreshFeedback.value = props.error ? '刷新失败' : '已刷新'
+      if (refreshFeedbackTimer) window.clearTimeout(refreshFeedbackTimer)
+      refreshFeedbackTimer = window.setTimeout(() => {
+        refreshFeedback.value = ''
+      }, 1800)
+    }
+  }
+)
 
 onMounted(() => {
   renderChart()
@@ -107,6 +138,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (refreshFeedbackTimer) window.clearTimeout(refreshFeedbackTimer)
   resizeObserver?.disconnect()
   chart?.dispose()
 })
@@ -116,7 +148,10 @@ onBeforeUnmount(() => {
   <article class="panel greenhouse-workspace-panel greenhouse-curve-panel">
     <div class="panel-heading">
       <div><p>Profile Control</p><h2>变化曲线控制</h2></div>
-      <button class="icon-button" title="刷新实际曲线" :disabled="loading" @click="emit('trace', sensor)">↻</button>
+      <div class="refresh-control">
+        <span v-if="refreshFeedback" class="refresh-feedback" :class="{ pending: refreshPending, error }">{{ refreshFeedback }}</span>
+        <button class="icon-button refresh-button" :class="{ refreshing: refreshPending }" title="刷新实际曲线" :disabled="loading" @click="refreshTrace">↻</button>
+      </div>
     </div>
     <div class="workspace-content">
       <p v-if="error" class="greenhouse-error">{{ error }}</p>

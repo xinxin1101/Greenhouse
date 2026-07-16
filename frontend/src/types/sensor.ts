@@ -128,6 +128,10 @@ export type GreenhouseHistoryRow = {
   humidity?: number | null
   co2?: number | null
   light?: number | null
+  target_temperature?: number | null
+  target_humidity?: number | null
+  target_co2?: number | null
+  target_light_on?: number | null
 }
 
 export type GreenhouseHistoryResult = {
@@ -159,6 +163,7 @@ export type EnvironmentReading = {
 export type EnvironmentTrendPoint = {
   recordTime: string
   temperature: number | null
+  targetTemperature?: number | null
   humidity: number | null
   lightIntensity?: number | null
   co2?: number | null
