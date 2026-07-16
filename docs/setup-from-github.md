@@ -20,11 +20,11 @@
 ## 2. 拉取代码
 
 ```powershell
-git clone https://github.com/你的用户名/你的仓库名.git
-cd sensor-platform
+git clone https://github.com/xinxin1101/Greenhouse.git
+cd Greenhouse
 ```
 
-如果项目仓库地址不同，请替换上面的 GitHub URL。
+如果你把项目 fork 或复制到了其他仓库，请替换上面的 GitHub URL。
 
 ## 3. 准备 MySQL 数据库
 
@@ -159,6 +159,7 @@ start-system.bat
 | --- | --- | --- |
 | Spring Boot 后端 | `8080` | 提供 `/api` 接口 |
 | Vue 前端 | `5173` | 浏览器访问入口 |
+| FastAPI 温室 PLC 网关 | `8000` | 提供 PLC 状态、控制、历史和报警接口 |
 | Java 采集模块 | `2404` | 接收传感器设备上报 |
 
 启动成功后访问：
@@ -299,4 +300,3 @@ mvn dependency:build-classpath "-Dmdep.outputFile=target/classpath.txt"
 ```
 
 然后按 `scripts/start-system.ps1` 中的 classpath 逻辑启动 `demo.Application`。一般情况下建议直接使用一键脚本，避免手动拼接 classpath。
-
