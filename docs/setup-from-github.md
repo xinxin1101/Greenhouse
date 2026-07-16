@@ -9,6 +9,7 @@
 | 软件 | 建议版本 | 验证命令 |
 | --- | --- | --- |
 | Git | 任意较新版本 | `git --version` |
+| Conda | Miniconda 或 Anaconda | `conda --version` |
 | JDK | 21 | `java -version` |
 | Maven | 3.9+ | `mvn -version` |
 | Node.js | 20+ | `node -v` |
@@ -16,6 +17,12 @@
 | MySQL | 8.x | `mysql --version` |
 
 如果使用 Windows，建议用 PowerShell 执行下面的命令。
+
+完整环境 requirements 见仓库根目录：
+
+```text
+ENVIRONMENT_REQUIREMENTS.md
+```
 
 ## 2. 拉取代码
 
@@ -25,6 +32,20 @@ cd Greenhouse
 ```
 
 如果你把项目 fork 或复制到了其他仓库，请替换上面的 GitHub URL。
+
+创建并激活 Python 环境：
+
+```powershell
+conda env create -f environment.yml
+conda activate sensor
+```
+
+如果本机已经存在 `sensor` 环境，可以改用：
+
+```powershell
+conda env update -f environment.yml --prune
+conda activate sensor
+```
 
 ## 3. 准备 MySQL 数据库
 

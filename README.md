@@ -38,11 +38,12 @@ stop-system.bat                  Windows 一键停止入口
 
 ## 首次运行
 
-请先安装 Git、JDK 21、Maven、Node.js 20+、MySQL 8，并准备 conda 环境 `sensor`。
+请先安装 Git、JDK 21、Maven、Node.js 20+、MySQL 8，并准备 conda 环境 `sensor`。完整环境清单见 [ENVIRONMENT_REQUIREMENTS.md](ENVIRONMENT_REQUIREMENTS.md)。
 
 ```powershell
 git clone https://github.com/xinxin1101/Greenhouse.git
 cd Greenhouse
+conda env create -f environment.yml
 conda activate sensor
 .\scripts\start-system.ps1 -InstallDeps
 ```
@@ -121,6 +122,7 @@ Spring Boot API：http://localhost:8080
 ## 文档
 
 - [完整拉取运行指南](docs/setup-from-github.md)
+- [环境 requirements](ENVIRONMENT_REQUIREMENTS.md)
 - [温室 PLC 网关配置](docs/greenhouse-setup.md)
 - [技术说明](docs/technical-manual.md)
 - [接口说明](docs/api.md)
